@@ -30,7 +30,45 @@ public class Store {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     protected Store() {
+    }
+
+    private Store(UUID id, UUID tenantId, String name, String timezone, LocalTime cutoff) {
+        Instant now = Instant.now();
+        this.id = id;
+        this.tenantId = tenantId;
+        this.name = name;
+        this.timezone = timezone;
+        this.businessDayCutoff = cutoff;
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    public static Store create(UUID id, UUID tenantId, String name,
+                               String timezone, LocalTime cutoff) {
+        return new Store(id, tenantId, name, timezone, cutoff);
+    }
+
+    public void rename(String name) {
+        this.name = name;
+        this.updatedAt = Instant.now();
+    }
+
+    public void reschedule(String timezone, LocalTime cutoff) {
+        this.timezone = timezone;
+        this.businessDayCutoff = cutoff;
+        this.updatedAt = Instant.now();
+    }
+
+    public void markDeleted() {
+        this.deletedAt = Instant.now();
+        this.updatedAt = this.deletedAt;
     }
 
     public UUID id() {
@@ -55,5 +93,9 @@ public class Store {
 
     public Instant createdAt() {
         return createdAt;
+    }
+
+    public Instant deletedAt() {
+        return deletedAt;
     }
 }
