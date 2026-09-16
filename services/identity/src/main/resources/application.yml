@@ -21,6 +21,13 @@ spring:
       enabled: true
 
 cloudpos:
+  security:
+    public-paths:
+      - /v1/auth/**
+      - /v1/devices/pair
+      - /v1/platform/**
+      - /.well-known/**
+      - /actuator/**
   jwt:
     issuer: https://identity.cloudpos.io
     access-token-ttl: 15m

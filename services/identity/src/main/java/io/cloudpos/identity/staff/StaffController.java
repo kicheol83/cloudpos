@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/v1/staff")
@@ -40,6 +41,7 @@ public class StaffController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public StaffResponse hire(@Valid @RequestBody HireStaffRequest request) {
         return StaffResponse.from(staff.hire(
                 request.store_id(),
@@ -51,6 +53,7 @@ public class StaffController {
     }
 
     @PatchMapping("/{staffId}/role")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public StaffResponse changeRole(@PathVariable UUID staffId,
                                     @Valid @RequestBody ChangeRoleRequest request) {
         return StaffResponse.from(staff.changeRole(staffId, StaffRole.valueOf(request.role())));
@@ -64,17 +67,20 @@ public class StaffController {
     }
 
     @PostMapping("/{staffId}/suspend")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public StaffResponse suspend(@PathVariable UUID staffId) {
         return StaffResponse.from(staff.suspend(staffId));
     }
 
     @PostMapping("/{staffId}/reinstate")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public StaffResponse reinstate(@PathVariable UUID staffId) {
         return StaffResponse.from(staff.reinstate(staffId));
     }
 
     @PostMapping("/{staffId}/terminate")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public void terminate(@PathVariable UUID staffId) {
         staff.terminate(staffId);
     }

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/v1/devices")
@@ -30,17 +31,20 @@ public class DeviceController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public List<DeviceResponse> list() {
         return devices.list().stream().map(DeviceResponse::from).toList();
     }
 
     @GetMapping("/{deviceId}")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public DeviceResponse get(@PathVariable UUID deviceId) {
         return DeviceResponse.from(devices.get(deviceId));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public DeviceRegistrationResponse register(@Valid @RequestBody RegisterDeviceRequest request) {
         return DeviceRegistrationResponse.from(
                 devices.register(request.store_id(), request.label()));
@@ -53,6 +57,7 @@ public class DeviceController {
 
     @PostMapping("/{deviceId}/revoke")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public void revoke(@PathVariable UUID deviceId) {
         devices.revoke(deviceId);
     }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/v1/stores")
@@ -40,18 +41,21 @@ public class StoreController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public StoreResponse create(@Valid @RequestBody CreateStoreRequest request) {
         return StoreResponse.from(stores.create(
                 request.name(), request.timezoneOrDefault(), request.cutoffOrDefault()));
     }
 
     @PatchMapping("/{storeId}/name")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public StoreResponse rename(@PathVariable UUID storeId,
                                 @Valid @RequestBody RenameStoreRequest request) {
         return StoreResponse.from(stores.rename(storeId, request.name()));
     }
 
     @PatchMapping("/{storeId}/schedule")
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public StoreResponse reschedule(@PathVariable UUID storeId,
                                     @Valid @RequestBody RescheduleStoreRequest request) {
         return StoreResponse.from(stores.reschedule(
@@ -60,6 +64,7 @@ public class StoreController {
 
     @DeleteMapping("/{storeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('OWNER', 'MANAGER')")
     public void delete(@PathVariable UUID storeId) {
         stores.delete(storeId);
     }
