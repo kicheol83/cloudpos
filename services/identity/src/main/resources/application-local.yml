@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5435/identity
+    username: cloudpos_app
+    password: cloudpos
+  flyway:
+    user: cloudpos_owner
+    password: cloudpos
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    io.cloudpos: DEBUG
