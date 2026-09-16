@@ -2,3 +2,4 @@ logging:
   level:
     io.cloudpos: DEBUG
     org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
