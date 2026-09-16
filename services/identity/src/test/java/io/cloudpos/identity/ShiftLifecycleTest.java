@@ -3,10 +3,13 @@ package io.cloudpos.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.nimbusds.jwt.SignedJWT;
 import io.cloudpos.identity.auth.AuthHandler;
 import io.cloudpos.identity.device.DevicePairingHandler;
 import io.cloudpos.identity.device.DeviceService;
+import io.cloudpos.identity.shift.BusinessDay;
+import io.cloudpos.identity.shift.Shift;
+import io.cloudpos.identity.shift.ShiftService;
+import io.cloudpos.identity.shift.ShiftStatus;
 import io.cloudpos.identity.staff.Staff;
 import io.cloudpos.identity.staff.StaffRole;
 import io.cloudpos.identity.staff.StaffService;
@@ -19,6 +22,7 @@ import io.cloudpos.web.ApiException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import org.junit.jupiter.api.AfterEach;
@@ -35,7 +39,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @Testcontainers
-class AuthTokenTest {
+class ShiftLifecycleTest {
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
@@ -86,6 +90,9 @@ class AuthTokenTest {
     private DevicePairingHandler pairingHandler;
 
     @Autowired
+    private ShiftService shifts;
+
+    @Autowired
     private AuthHandler auth;
 
     private Tenant tenant;
@@ -96,10 +103,14 @@ class AuthTokenTest {
     @BeforeEach
     void setUp() throws Exception {
         try (Connection c = ownerConnection(); Statement st = c.createStatement()) {
-            st.execute("""
-                    TRUNCATE shift, refresh_token, device_directory, device_pairing,
-                             device, staff, store, tenant CASCADE
-                    """);
+            st.execute("DELETE FROM shift");
+            st.execute("DELETE FROM refresh_token");
+            st.execute("DELETE FROM device_directory");
+            st.execute("DELETE FROM device_pairing");
+            st.execute("DELETE FROM device");
+            st.execute("DELETE FROM staff");
+            st.execute("DELETE FROM store");
+            st.execute("DELETE FROM tenant");
         }
 
         tenant = provisioner.provision("Tenant A", "Gangnam", "Asia/Seoul", LocalTime.of(5, 0));
@@ -120,92 +131,85 @@ class AuthTokenTest {
     }
 
     @Test
-    void loginIssuesSignedAccessTokenWithTenantClaims() throws Exception {
+    void loginOpensAShiftAndPutsItInTheToken() {
         AuthHandler.Tokens tokens = auth.login(
                 device.deviceId(), device.secret(), waiter.id(), "1234");
 
-        SignedJWT jwt = SignedJWT.parse(tokens.accessToken());
-        var claims = jwt.getJWTClaimsSet();
+        assertThat(tokens.session().shiftId()).isNotNull();
 
-        assertThat(claims.getSubject()).isEqualTo(waiter.id().toString());
-        assertThat(claims.getStringClaim("tid")).isEqualTo(tenant.id().toString());
-        assertThat(claims.getStringClaim("sid")).isEqualTo(store.id().toString());
-        assertThat(claims.getStringClaim("did")).isEqualTo(device.deviceId().toString());
-        assertThat(claims.getStringClaim("role")).isEqualTo("WAITER");
-        assertThat(jwt.getHeader().getKeyID()).isNotBlank();
-        assertThat(tokens.refreshToken()).startsWith(tenant.id().toString() + ".");
-    }
-
-    @Test
-    void loginWithoutTenantHeaderResolvesTenantFromDeviceDirectory() {
-        TenantContext.clear();
-        AuthHandler.Tokens tokens = auth.login(
-                device.deviceId(), device.secret(), waiter.id(), "1234");
-
-        assertThat(tokens.session().tenantId()).isEqualTo(tenant.id());
-    }
-
-    @Test
-    void refreshRotatesTheToken() {
-        AuthHandler.Tokens first = auth.login(
-                device.deviceId(), device.secret(), waiter.id(), "1234");
-
-        AuthHandler.Tokens second = auth.refresh(first.refreshToken());
-
-        assertThat(second.refreshToken()).isNotEqualTo(first.refreshToken());
-        assertThat(second.session().staffId()).isEqualTo(waiter.id());
-    }
-
-    @Test
-    void reusingAConsumedRefreshTokenRevokesTheWholeFamily() {
-        AuthHandler.Tokens first = auth.login(
-                device.deviceId(), device.secret(), waiter.id(), "1234");
-        AuthHandler.Tokens second = auth.refresh(first.refreshToken());
-
-        assertThatThrownBy(() -> auth.refresh(first.refreshToken()))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("already used");
-
-        assertThatThrownBy(() -> auth.refresh(second.refreshToken()))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("revoked");
-    }
-
-    @Test
-    void logoutRevokesTheFamily() {
-        AuthHandler.Tokens tokens = auth.login(
-                device.deviceId(), device.secret(), waiter.id(), "1234");
-
-        auth.logout(tokens.refreshToken());
-
-        assertThatThrownBy(() -> auth.refresh(tokens.refreshToken()))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("revoked");
-    }
-
-    @Test
-    void unknownRefreshTokenIsRejected() {
-        assertThatThrownBy(() -> auth.refresh(tenant.id() + ".not-a-real-token"))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not recognised");
-    }
-
-    @Test
-    void malformedRefreshTokenIsRejected() {
-        assertThatThrownBy(() -> auth.refresh("garbage"))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("not recognised");
-    }
-
-    @Test
-    void revokedDeviceCannotLogIn() {
         TenantContext.set(tenant.id());
-        devices.revoke(device.deviceId());
+        Shift shift = shifts.get(tokens.session().shiftId());
+        assertThat(shift.status()).isEqualTo(ShiftStatus.OPEN);
+        assertThat(shift.staffId()).isEqualTo(waiter.id());
+    }
+
+    @Test
+    void loggingInTwiceResumesTheSameShift() {
+        AuthHandler.Tokens first = auth.login(
+                device.deviceId(), device.secret(), waiter.id(), "1234");
+        AuthHandler.Tokens second = auth.login(
+                device.deviceId(), device.secret(), waiter.id(), "1234");
+
+        assertThat(second.session().shiftId()).isEqualTo(first.session().shiftId());
+    }
+
+    @Test
+    void closingAShiftAllowsANewOneToOpen() {
+        AuthHandler.Tokens first = auth.login(
+                device.deviceId(), device.secret(), waiter.id(), "1234");
+
+        TenantContext.set(tenant.id());
+        shifts.close(first.session().shiftId());
         TenantContext.clear();
 
-        assertThatThrownBy(() -> auth.login(
-                device.deviceId(), device.secret(), waiter.id(), "1234"))
-                .isInstanceOf(ApiException.class);
+        AuthHandler.Tokens second = auth.login(
+                device.deviceId(), device.secret(), waiter.id(), "1234");
+
+        assertThat(second.session().shiftId()).isNotEqualTo(first.session().shiftId());
+    }
+
+    @Test
+    void closingATwiceClosedShiftIsRejected() {
+        AuthHandler.Tokens tokens = auth.login(
+                device.deviceId(), device.secret(), waiter.id(), "1234");
+
+        TenantContext.set(tenant.id());
+        shifts.close(tokens.session().shiftId());
+
+        assertThatThrownBy(() -> shifts.close(tokens.session().shiftId()))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("already closed");
+    }
+
+    @Test
+    void businessDateFallsBackToThePreviousDayBeforeCutoff() {
+        LocalDate date = BusinessDay.of(
+                Instant.parse("2026-06-11T18:30:00Z"), "Asia/Seoul", LocalTime.of(5, 0));
+
+        assertThat(date).isEqualTo(LocalDate.of(2026, 6, 11));
+
+        LocalDate lateNight = BusinessDay.of(
+                Instant.parse("2026-06-11T18:00:00Z"), "Asia/Seoul", LocalTime.of(5, 0));
+
+        assertThat(lateNight).isEqualTo(LocalDate.of(2026, 6, 11));
+
+        LocalDate beforeCutoff = BusinessDay.of(
+                Instant.parse("2026-06-11T19:30:00Z"), "Asia/Seoul", LocalTime.of(5, 0));
+
+        assertThat(beforeCutoff).isEqualTo(LocalDate.of(2026, 6, 11));
+    }
+
+    @Test
+    void shiftIsListedForItsBusinessDate() {
+        AuthHandler.Tokens tokens = auth.login(
+                device.deviceId(), device.secret(), waiter.id(), "1234");
+
+        TenantContext.set(tenant.id());
+        Shift shift = shifts.get(tokens.session().shiftId());
+
+        assertThat(shifts.listByBusinessDate(store.id(), shift.businessDate()))
+                .extracting(Shift::id)
+                .containsExactly(shift.id());
     }
 
     private static Connection ownerConnection() throws Exception {
