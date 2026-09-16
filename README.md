@@ -41,8 +41,8 @@ gradle wrapper --gradle-version 8.14
 ### Windows (PowerShell)
 
 ```powershell
-.\make.ps1 up.core            # postgres + redis
-.\make.ps1 run.identity       # from the IDE in practice, so you keep the debugger
+.\make.ps1 up.core
+.\make.ps1 run.identity
 .\make.ps1 run.gateway
 
 $headers = @{ "X-Dev-Tenant-Id" = "00000000-0000-0000-0000-00000000000a" }
@@ -60,17 +60,24 @@ curl -H 'X-Dev-Tenant-Id: 00000000-0000-0000-0000-00000000000a' \
      http://localhost:8080/v1/stores
 ```
 
+Local ports are deliberately non-standard — PostgreSQL on 5435, Redis on 6380 — so the
+stack never collides with other projects. Override with `POSTGRES_PORT`, `REDIS_PORT`,
+`KAFKA_PORT` or `CLICKHOUSE_PORT`.
+
+`bootRun` activates the `local` Spring profile automatically, so no environment
+variables are needed.
+
 See ADR 0018 for why you should never run the full stack.
 
 ## Layout
 
-| Path | Contents |
-| --- | --- |
-| `contracts/` | OpenAPI documents and event schemas — the source of truth |
-| `libs/` | `tenancy` (RLS binding), `web` (problem details) |
-| `services/` | `gateway`, `identity` |
-| `infra/compose/` | Profiled local environment |
-| `docs/` | ADRs, architecture, domain model, contracts |
+| Path             | Contents                                                  |
+| ---------------- | --------------------------------------------------------- |
+| `contracts/`     | OpenAPI documents and event schemas — the source of truth |
+| `libs/`          | `tenancy` (RLS binding), `web` (problem details)          |
+| `services/`      | `gateway`, `identity`                                     |
+| `infra/compose/` | Profiled local environment                                |
+| `docs/`          | ADRs, architecture, domain model, contracts               |
 
 ## Documentation
 
