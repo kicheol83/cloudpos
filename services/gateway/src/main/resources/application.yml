@@ -1,15 +1,31 @@
 spring:
   application:
     name: gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${IDENTITY_URI:http://localhost:8081}/.well-known/jwks.json
   cloud:
     gateway:
       server:
         webflux:
+          default-filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@tenantKeyResolver}"
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                redis-rate-limiter.requestedTokens: 1
           routes:
             - id: identity
               uri: ${IDENTITY_URI:http://localhost:8081}
               predicates:
-                - Path=/v1/stores/**,/v1/staff/**,/v1/devices/**
+                - Path=/v1/auth/**,/v1/stores/**,/v1/staff/**,/v1/devices/**,/v1/shifts/**,/v1/approvals/**
 
 server:
   port: 8080
