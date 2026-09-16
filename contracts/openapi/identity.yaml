@@ -1,0 +1,374 @@
+openapi: 3.1.0
+info:
+  title: CloudPos Identity Service
+  version: 1.0.0
+  description: >
+    Tenants, stores, staff, devices, shifts and authentication.
+    All tenant-scoped endpoints rely on the gateway-injected X-Tenant-Id header;
+    clients never supply it.
+
+servers:
+  - url: https://api.cloudpos.io
+    description: Gateway
+
+tags:
+  - name: auth
+  - name: stores
+  - name: staff
+  - name: devices
+  - name: shifts
+  - name: platform
+
+paths:
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange device credential and staff PIN for tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id, device_secret, staff_id, pin]
+              properties:
+                device_id: { type: string, format: uuid }
+                device_secret: { type: string }
+                staff_id: { type: string, format: uuid }
+                pin: { type: string, pattern: '^\d{4,6}$' }
+      responses:
+        '200':
+          description: Tokens issued and a shift opened or resumed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '423': { $ref: '#/components/responses/Problem' }
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate the refresh token
+      description: >
+        Presenting a token that has already been consumed revokes every token in
+        its family and returns 401 with code REFRESH_TOKEN_REUSED.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401': { $ref: '#/components/responses/Problem' }
+
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the refresh token family
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '204': { description: Revoked }
+
+  /v1/approvals:
+    post:
+      tags: [auth]
+      summary: Obtain a short-lived approval token from a manager PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approver_staff_id, pin, action]
+              properties:
+                approver_staff_id: { type: string, format: uuid }
+                pin: { type: string, pattern: '^\d{4,6}$' }
+                action:
+                  type: string
+                  examples: [ORDER_VOID, DISCOUNT_OVER_THRESHOLD, PRICE_OVERRIDE]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  approval_token: { type: string }
+                  expires_in: { type: integer }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+
+  /v1/stores:
+    get:
+      tags: [stores]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Store' }
+    post:
+      tags: [stores]
+      description: Requires OWNER or MANAGER
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                timezone: { type: string, default: Asia/Seoul }
+                business_day_cutoff: { type: string, format: partial-time, default: '05:00' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Store' }
+        '403': { $ref: '#/components/responses/Problem' }
+
+  /v1/staff:
+    get:
+      tags: [staff]
+      parameters:
+        - name: store_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Staff' }
+    post:
+      tags: [staff]
+      description: Requires OWNER or MANAGER
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, employee_code, display_name, role, pin]
+              properties:
+                store_id: { type: string, format: uuid }
+                employee_code: { type: string }
+                display_name: { type: string }
+                role: { $ref: '#/components/schemas/StaffRole' }
+                pin: { type: string, pattern: '^\d{4,6}$' }
+                joined_on: { type: string, format: date }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Staff' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /v1/devices:
+    get:
+      tags: [devices]
+      description: Requires OWNER or MANAGER
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Device' }
+    post:
+      tags: [devices]
+      description: Requires OWNER or MANAGER. Returns a single-use pairing code valid for 15 minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [store_id, label]
+              properties:
+                store_id: { type: string, format: uuid }
+                label: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  store_id: { type: string, format: uuid }
+                  label: { type: string }
+                  pairing_code: { type: string, minLength: 8, maxLength: 8 }
+                  pairing_expires_at: { type: string, format: date-time }
+
+  /v1/devices/pair:
+    post:
+      tags: [devices]
+      summary: Exchange a pairing code for a device credential
+      description: >
+        Unauthenticated. The tenant is resolved from the pairing code, not from a header.
+        The device secret is returned exactly once and is never retrievable again.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pairing_code]
+              properties:
+                pairing_code: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id: { type: string, format: uuid }
+                  tenant_id: { type: string, format: uuid }
+                  store_id: { type: string, format: uuid }
+                  device_secret: { type: string }
+        '404': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+
+  /v1/shifts/current:
+    get:
+      tags: [shifts]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /v1/shifts/{shiftId}/close:
+    post:
+      tags: [shifts]
+      parameters:
+        - name: shiftId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Problem:
+      description: RFC 9457 problem details
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              code: { type: string }
+              detail: { type: string }
+              trace_id: { type: string }
+
+  schemas:
+    StaffRole:
+      type: string
+      enum: [OWNER, MANAGER, WAITER, KITCHEN]
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string, const: Bearer }
+        expires_in: { type: integer }
+        staff_id: { type: string, format: uuid }
+        store_id: { type: string, format: uuid }
+        shift_id: { type: string, format: uuid }
+        display_name: { type: string }
+        role: { $ref: '#/components/schemas/StaffRole' }
+
+    Store:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        timezone: { type: string }
+        business_day_cutoff: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Staff:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        store_id: { type: string, format: uuid }
+        employee_code: { type: string }
+        display_name: { type: string }
+        role: { $ref: '#/components/schemas/StaffRole' }
+        employment_status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, TERMINATED]
+        joined_on: { type: string, format: date }
+
+    Device:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        store_id: { type: string, format: uuid }
+        label: { type: string }
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, REVOKED]
+        paired_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    Shift:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        store_id: { type: string, format: uuid }
+        staff_id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        business_date: { type: string, format: date }
+        opened_at: { type: string, format: date-time }
+        closed_at: { type: string, format: date-time }
+        opening_float_amount: { type: integer, format: int64 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        status:
+          type: string
+          enum: [OPEN, CLOSED]
+
+security:
+  - bearerAuth: []

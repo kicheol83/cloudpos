@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.cloudpos.io/events/identity/device.revoked.v1.json",
+  "title": "device.revoked",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "tenant_id", "store_id", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "device.revoked" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string", "format": "uuid" },
+    "store_id": { "type": "string", "format": "uuid" },
+    "producer": { "const": "identity" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["device_id", "revoked_by_staff_id"],
+      "properties": {
+        "device_id": { "type": "string", "format": "uuid" },
+        "revoked_by_staff_id": { "type": "string", "format": "uuid" },
+        "reason": { "type": "string" }
+      }
+    }
+  }
+}
