@@ -41,6 +41,6 @@ public class StaffAuthService {
 
         Staff member = staff.get(staffId);
         return new StaffSession(TenantContext.require(), device.storeId(), member.id(),
-                device.id(), member.displayName(), member.role());
+                device.id(), null, member.displayName(), member.role());
     }
 }

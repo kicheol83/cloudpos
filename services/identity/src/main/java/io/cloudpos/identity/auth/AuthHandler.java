@@ -1,6 +1,8 @@
 package io.cloudpos.identity.auth;
 
 import io.cloudpos.identity.security.AccessTokenIssuer;
+import io.cloudpos.identity.shift.Shift;
+import io.cloudpos.identity.shift.ShiftService;
 import io.cloudpos.identity.staff.Staff;
 import io.cloudpos.identity.staff.StaffService;
 import io.cloudpos.tenancy.TenantContext;
@@ -17,15 +19,17 @@ public class AuthHandler {
     private final StaffService staff;
     private final RefreshTokenService refreshTokens;
     private final AccessTokenIssuer accessTokens;
+    private final ShiftService shifts;
 
     public AuthHandler(DeviceDirectoryRepository directory, StaffAuthService staffAuth,
                        StaffService staff, RefreshTokenService refreshTokens,
-                       AccessTokenIssuer accessTokens) {
+                       AccessTokenIssuer accessTokens, ShiftService shifts) {
         this.directory = directory;
         this.staffAuth = staffAuth;
         this.staff = staff;
         this.refreshTokens = refreshTokens;
         this.accessTokens = accessTokens;
+        this.shifts = shifts;
     }
 
     public record Tokens(String accessToken, String refreshToken, long expiresInSeconds,
@@ -39,7 +43,11 @@ public class AuthHandler {
 
         TenantContext.set(entry.tenantId());
 
-        StaffSession session = staffAuth.authenticate(deviceId, deviceSecret, staffId, pin);
+        StaffSession authenticated = staffAuth.authenticate(deviceId, deviceSecret, staffId, pin);
+
+        Shift shift = shifts.openOrResume(authenticated.storeId(), authenticated.staffId(),
+                authenticated.deviceId(), 0L);
+        StaffSession session = authenticated.withShift(shift.id());
 
         RefreshTokenService.IssuedToken refresh = refreshTokens.issue(
                 entry.tenantId(), session.staffId(), session.deviceId(), UUID.randomUUID());
@@ -72,8 +80,10 @@ public class AuthHandler {
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
                         "DEVICE_CREDENTIAL_INVALID", "Device is no longer registered"));
 
+        UUID shiftId = shifts.currentFor(member.id()).map(Shift::id).orElse(null);
+
         StaffSession session = new StaffSession(tenantId, entry.storeId(), member.id(),
-                entry.deviceId(), member.displayName(), member.role());
+                entry.deviceId(), shiftId, member.displayName(), member.role());
 
         return new Tokens(accessTokens.issue(session), rotated.token(),
                 accessTokens.accessTokenSeconds(), session);

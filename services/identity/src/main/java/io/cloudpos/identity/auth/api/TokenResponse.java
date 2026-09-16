@@ -4,7 +4,7 @@ import io.cloudpos.identity.auth.AuthHandler;
 import java.util.UUID;
 
 public record TokenResponse(String access_token, String refresh_token, String token_type,
-                            long expires_in, UUID staff_id, UUID store_id,
+                            long expires_in, UUID staff_id, UUID store_id, UUID shift_id,
                             String display_name, String role) {
 
     public static TokenResponse from(AuthHandler.Tokens tokens) {
@@ -15,6 +15,7 @@ public record TokenResponse(String access_token, String refresh_token, String to
                 tokens.expiresInSeconds(),
                 tokens.session().staffId(),
                 tokens.session().storeId(),
+                tokens.session().shiftId(),
                 tokens.session().displayName(),
                 tokens.session().role().name());
     }

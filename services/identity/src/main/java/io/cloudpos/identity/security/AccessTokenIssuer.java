@@ -37,6 +37,7 @@ public class AccessTokenIssuer {
                 .claim("did", session.deviceId().toString())
                 .claim("role", session.role().name())
                 .claim("name", session.displayName())
+                .claim("shift", session.shiftId() == null ? null : session.shiftId().toString())
                 .build();
 
         try {
