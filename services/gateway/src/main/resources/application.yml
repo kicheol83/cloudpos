@@ -1,4 +1,21 @@
-logging:
-  level:
-    io.cloudpos: DEBUG
-    org.springframework.cloud.gateway: DEBUG
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: identity
+              uri: ${IDENTITY_URI:http://localhost:8081}
+              predicates:
+                - Path=/v1/stores/**,/v1/staff/**,/v1/devices/**
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

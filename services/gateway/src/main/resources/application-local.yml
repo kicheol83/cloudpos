@@ -1,0 +1,4 @@
+logging:
+  level:
+    io.cloudpos: DEBUG
+    org.springframework.cloud.gateway: DEBUG
