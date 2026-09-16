@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: identity
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/identity
+    username: ${DB_USER:cloudpos_app}
+    password: ${DB_PASSWORD:cloudpos}
+    hikari:
+      data-source-properties:
+        prepareThreshold: 0
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    user: ${DB_OWNER_USER:cloudpos_owner}
+    password: ${DB_OWNER_PASSWORD:cloudpos}
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

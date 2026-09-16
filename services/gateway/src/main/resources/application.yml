@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: identity
+              uri: ${IDENTITY_URI:http://localhost:8081}
+              predicates:
+                - Path=/v1/stores/**,/v1/staff/**
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

@@ -1,0 +1,17 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+
+*.class
+*.log
+
+node_modules/
+dist/
+
+.env
+.env.local

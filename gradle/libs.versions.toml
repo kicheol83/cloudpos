@@ -1,0 +1,15 @@
+[versions]
+springBoot = "3.5.0"
+springCloud = "2025.0.0"
+springDepMgmt = "1.1.7"
+testcontainers = "1.20.4"
+archunit = "1.3.0"
+
+[libraries]
+spring-cloud-bom   = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "springCloud" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version.ref = "testcontainers" }
+archunit-junit5    = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
+[plugins]
+spring-boot    = { id = "org.springframework.boot", version.ref = "springBoot" }
+spring-depmgmt = { id = "io.spring.dependency-management", version.ref = "springDepMgmt" }
