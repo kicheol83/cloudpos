@@ -96,13 +96,10 @@ class AuthTokenTest {
     @BeforeEach
     void setUp() throws Exception {
         try (Connection c = ownerConnection(); Statement st = c.createStatement()) {
-            st.execute("DELETE FROM refresh_token");
-            st.execute("DELETE FROM device_directory");
-            st.execute("DELETE FROM device_pairing");
-            st.execute("DELETE FROM device");
-            st.execute("DELETE FROM staff");
-            st.execute("DELETE FROM store");
-            st.execute("DELETE FROM tenant");
+            st.execute("""
+                    TRUNCATE shift, refresh_token, device_directory, device_pairing,
+                             device, staff, store, tenant CASCADE
+                    """);
         }
 
         tenant = provisioner.provision("Tenant A", "Gangnam", "Asia/Seoul", LocalTime.of(5, 0));
