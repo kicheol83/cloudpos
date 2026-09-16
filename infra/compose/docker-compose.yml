@@ -1,0 +1,45 @@
+name: cloudpos
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    profiles: ["core", "menu", "sales", "stock", "money", "realtime", "analytics", "full"]
+    environment:
+      POSTGRES_PASSWORD: cloudpos
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["core", "menu", "sales", "stock", "money", "realtime", "analytics", "full"]
+    ports: ["${REDIS_PORT:-6379}:6379"]
+
+  kafka:
+    image: apache/kafka:3.9.0
+    profiles: ["money", "analytics", "full"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports: ["${KAFKA_PORT:-9092}:9092"]
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    profiles: ["analytics", "full"]
+    ports: ["${CLICKHOUSE_PORT:-8123}:8123"]
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+
+volumes:
+  pgdata:
