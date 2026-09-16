@@ -1,16 +1,36 @@
 spring:
+  application:
+    name: identity
   datasource:
-    url: jdbc:postgresql://localhost:5435/identity
-    username: cloudpos_app
-    password: cloudpos
-  flyway:
-    user: cloudpos_owner
-    password: cloudpos
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/identity
+    username: ${DB_USER:cloudpos_app}
+    password: ${DB_PASSWORD:cloudpos}
+    hikari:
+      data-source-properties:
+        prepareThreshold: 0
   jpa:
-    properties:
-      hibernate:
-        format_sql: true
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    user: ${DB_OWNER_USER:cloudpos_owner}
+    password: ${DB_OWNER_PASSWORD:cloudpos}
+  mvc:
+    problemdetails:
+      enabled: true
 
-logging:
-  level:
-    io.cloudpos: DEBUG
+cloudpos:
+  jwt:
+    issuer: https://identity.cloudpos.io
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
