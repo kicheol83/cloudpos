@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.cloudpos.io/events/identity/staff.role_changed.v1.json",
+  "title": "staff.role_changed",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "tenant_id", "store_id", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "staff.role_changed" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string", "format": "uuid" },
+    "store_id": { "type": "string", "format": "uuid" },
+    "producer": { "const": "identity" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["staff_id", "from_role", "to_role", "changed_by_staff_id"],
+      "properties": {
+        "staff_id": { "type": "string", "format": "uuid" },
+        "from_role": { "enum": ["OWNER", "MANAGER", "WAITER", "KITCHEN"] },
+        "to_role": { "enum": ["OWNER", "MANAGER", "WAITER", "KITCHEN"] },
+        "changed_by_staff_id": { "type": "string", "format": "uuid" }
+      }
+    }
+  }
+}

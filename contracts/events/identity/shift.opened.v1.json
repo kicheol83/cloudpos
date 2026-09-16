@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.cloudpos.io/events/identity/shift.opened.v1.json",
+  "title": "shift.opened",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "tenant_id", "store_id", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "shift.opened" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string", "format": "uuid" },
+    "store_id": { "type": "string", "format": "uuid" },
+    "producer": { "const": "identity" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["shift_id", "staff_id", "device_id", "business_date"],
+      "properties": {
+        "shift_id": { "type": "string", "format": "uuid" },
+        "staff_id": { "type": "string", "format": "uuid" },
+        "device_id": { "type": "string", "format": "uuid" },
+        "business_date": { "type": "string", "format": "date" },
+        "opening_float_amount": { "type": "integer" },
+        "currency": { "type": "string" }
+      }
+    }
+  }
+}
