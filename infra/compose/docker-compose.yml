@@ -3,17 +3,7 @@ name: cloudpos
 services:
   postgres:
     image: postgres:17-alpine
-    profiles:
-      [
-        "core",
-        "menu",
-        "sales",
-        "stock",
-        "money",
-        "realtime",
-        "analytics",
-        "full",
-      ]
+    profiles: ["core", "menu", "sales", "stock", "money", "realtime", "analytics", "full"]
     environment:
       POSTGRES_PASSWORD: cloudpos
     ports: ["${POSTGRES_PORT:-5435}:5432"]
@@ -27,17 +17,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    profiles:
-      [
-        "core",
-        "menu",
-        "sales",
-        "stock",
-        "money",
-        "realtime",
-        "analytics",
-        "full",
-      ]
+    profiles: ["core", "menu", "sales", "stock", "money", "realtime", "analytics", "full"]
     ports: ["${REDIS_PORT:-6380}:6379"]
 
   kafka:

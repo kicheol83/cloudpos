@@ -71,13 +71,13 @@ See ADR 0018 for why you should never run the full stack.
 
 ## Layout
 
-| Path             | Contents                                                  |
-| ---------------- | --------------------------------------------------------- |
-| `contracts/`     | OpenAPI documents and event schemas — the source of truth |
-| `libs/`          | `tenancy` (RLS binding), `web` (problem details)          |
-| `services/`      | `gateway`, `identity`                                     |
-| `infra/compose/` | Profiled local environment                                |
-| `docs/`          | ADRs, architecture, domain model, contracts               |
+| Path | Contents |
+| --- | --- |
+| `contracts/` | OpenAPI documents and event schemas — the source of truth |
+| `libs/` | `tenancy` (RLS binding), `web` (problem details) |
+| `services/` | `gateway`, `identity` |
+| `infra/compose/` | Profiled local environment |
+| `docs/` | ADRs, architecture, domain model, contracts |
 
 ## Documentation
 
