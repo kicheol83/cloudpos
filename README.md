@@ -21,6 +21,8 @@ Invoke-RestMethod -Uri "http://localhost:8080/v1/stores" -Headers $headers
 
 다른 프로젝트와 겹치지 않게 PostgreSQL은 5435, Redis는 6380 포트를 씁니다.
 
+`bootRun`은 `local` 프로필로 실행됩니다.
+
 ## 구조
 
 - `services/`: `gateway`, `identity`
